@@ -1,0 +1,57 @@
+// agent code:
+server.log("Turn LED on: " + http.agenturl() + "?state=1");
+server.log("Turn LED off: " + http.agenturl() + "?state=0");
+
+function httpHandler(request, response) {
+    if ("state" in request.query) {
+        local state = request.query.state;
+        device.send("led", state);
+    }
+    response.send(200, "OK");
+}
+http.onrequest(httpHandler);
+
+
+// add this to the bottom of your agent code:
+agentUrl <- "https://agent.electricimp.com/r4p_bLPyXYU7";
+
+function gotresponse(response) {
+server.log(response.statuscode + ": " + response.body);
+}
+
+function setOtherLed (state) {
+    local url = agentUrl + "?state=" + state;
+    local request = http.get(url);
+    request.sendasync(gotresponse);
+}
+
+device.on("button",  setOtherLed);
+
+
+// device code: 
+imp.configure("Electric Imp Workshop", [], []);
+led <- hardware.pin9;
+led.configure(DIGITAL_OUT_OD);
+led.write(1);
+
+function setLed(state) {
+    if (state == "0") {
+        led.write(1);
+} else {
+        led.write(0);
+    }
+    agent.send("button",state);
+
+}
+agent.on("led", setLed);
+
+// add this to the bottom of your device code: 
+button <- hardware.pin1;
+
+function buttonChanged() {
+    imp.sleep(0.02); // debounce
+    local state = 1 - button.read();
+    agent.send("button", state);
+}
+
+button.configure(DIGITAL_IN_PULLUP, buttonChanged);
